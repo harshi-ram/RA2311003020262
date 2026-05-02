@@ -1,23 +1,110 @@
-const loggingMiddleware = (req, res, next) => {
-  const startTime = Date.now();
-  const { method, path } = req;
+const express = require("express");
+const router = express.Router();
+const scheduler = require("./scheduler");
 
-  console.log(`[${new Date().toISOString()}] ${method} ${path}`);
+router.get("/depots", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.split(" ")[1] || "";
+    const depots = await scheduler.fetchDepots(authToken);
+    res.status(200).json({
+      success: true,
+      data: depots,
+      count: depots.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 
-  const originalSend = res.send;
 
-  res.send = function (data) {
-    const duration = Date.now() - startTime;
-    const statusCode = res.statusCode;
+router.get("/vehicles", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.split(" ")[1] || "";
+    const vehicles = await scheduler.fetchVehicles(authToken);
 
-    console.log(
-      `[${new Date().toISOString()}] ${method} ${path} - Status: ${statusCode} - Duration: ${duration}ms`
+    const depotId = req.query.depotId;
+    const filteredVehicles = depotId
+      ? vehicles.filter((v) => v.depotId === depotId)
+      : vehicles;
+
+    res.status(200).json({
+      success: true,
+      data: filteredVehicles,
+      count: filteredVehicles.length,
+      totalVehicles: vehicles.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+
+router.post("/schedule", async (req, res) => {
+  try {
+    const { availableHours, depotId } = req.body;
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.split(" ")[1] || "";
+
+    if (!availableHours || typeof availableHours !== "number" || availableHours <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "availableHours must be a positive number",
+      });
+    }
+
+    const schedule = await scheduler.getOptimalRepairSchedule(
+      depotId,
+      availableHours,
+      authToken
     );
 
-    return originalSend.call(this, data);
-  };
+    res.status(200).json({
+      success: true,
+      data: schedule,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 
-  next();
-};
 
-module.exports = loggingMiddleware;
+router.get("/schedule", async (req, res) => {
+  try {
+    const { availableHours, depotId } = req.query;
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.split(" ")[1] || "";
+
+    const hours = parseFloat(availableHours);
+    if (!hours || isNaN(hours) || hours <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "availableHours must be a positive number",
+      });
+    }
+
+    const schedule = await scheduler.getOptimalRepairSchedule(depotId, hours, authToken);
+
+    res.status(200).json({
+      success: true,
+      data: schedule,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+module.exports = router;
