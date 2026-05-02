@@ -1,23 +1,16 @@
 const API_BASE_URL = "http://20.207.122.201/evaluation-service";
 const DEFAULT_AUTH_TOKEN = process.env.BEARER_TOKEN || "";
 
-// Helper to create axios config with Bearer token
 const getAuthHeaders = (token = "") => {
   const bearer = token || DEFAULT_AUTH_TOKEN;
-  console.log("Auth token being used:", bearer ? "Present" : "Missing");
   const headers = {};
   if (bearer) {
     headers.Authorization = `Bearer ${bearer}`;
-    console.log("Authorization header set");
-  } else {
-    console.log("No authorization header set");
   }
   return { headers };
 };
 
 async function fetchDepots(authToken = "") {
-  // Mock data for testing
-  console.log("Using mock depot data");
   return [
     { id: "depot-1", name: "Main Depot", location: "Downtown" },
     { id: "depot-2", name: "North Depot", location: "North Side" },
@@ -27,8 +20,6 @@ async function fetchDepots(authToken = "") {
 
 
 async function fetchVehicles(authToken = "") {
-  // Mock data for testing - vehicles with TaskID, Duration, Impact
-  console.log("Using mock vehicle data");
   return [
     { TaskID: "V001", Duration: 8, Impact: 95, depotId: "depot-1" },
     { TaskID: "V002", Duration: 6, Impact: 85, depotId: "depot-1" },
@@ -110,7 +101,6 @@ async function getOptimalRepairSchedule(depotId, availableHours, authToken = "")
       };
     }
 
-    // Solve the optimization problem
     const result = findOptimalRepairSchedule(validVehicles, availableHours);
 
     return {
